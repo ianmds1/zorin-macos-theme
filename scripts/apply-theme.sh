@@ -83,7 +83,7 @@ GTK4_DIR="$REAL_HOME/.config/gtk-4.0"
 ASSETS_DIR="$GTK4_DIR/windows-assets"
 mkdir -p "$GTK4_DIR" "$ASSETS_DIR"
 
-GRESOURCE=$(find /usr/share/themes/WhiteSur-Dark -name "gtk.gresource" 2>/dev/null | head -1)
+GRESOURCE=$(find /usr/share/themes/WhiteSur-Light -name "gtk.gresource" 2>/dev/null | head -1)
 if [ -n "$GRESOURCE" ] && command -v gresource &>/dev/null; then
     info "Extracting GTK4 CSS from gresource..."
     for res in $(gresource list "$GRESOURCE" 2>/dev/null); do
@@ -107,11 +107,10 @@ GTK3_DIR="$REAL_HOME/.config/gtk-3.0"
 mkdir -p "$GTK3_DIR"
 cat > "$GTK3_DIR/settings.ini" << 'EOFGTK3'
 [Settings]
-gtk-theme-name=WhiteSur-Dark
+gtk-theme-name=WhiteSur-Light
 gtk-icon-theme-name=WhiteSur-light
 gtk-cursor-theme-name=WhiteSur-cursors
 gtk-font-name=Cantarell 11
-gtk-application-prefer-dark-theme=1
 EOFGTK3
 chown -R "$REAL_USER:$REAL_USER" "$GTK3_DIR"
 info "GTK3 dark settings configured."
@@ -119,7 +118,7 @@ info "GTK3 dark settings configured."
 # ── 5. GNOME interface settings ───────────────────────────────────────────────
 section "5. GNOME theme settings"
 info "GTK / icon / cursor / font..."
-gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Dark'
+gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Light'
 gs org.gnome.desktop.interface icon-theme           'WhiteSur-light'
 gs org.gnome.desktop.interface cursor-theme         'WhiteSur-cursors'
 gs org.gnome.desktop.interface font-name            'Cantarell 11'
@@ -137,7 +136,7 @@ gs org.gnome.desktop.wm.preferences action-double-click-titlebar 'toggle-maximiz
 
 info "Shell theme..."
 if gcheck "org.gnome.shell.extensions.user-theme"; then
-    gs org.gnome.shell.extensions.user-theme name 'WhiteSur-Dark'
+    gs org.gnome.shell.extensions.user-theme name 'WhiteSur-Light'
 else
     warn "user-theme extension not found — shell theme skipped."
 fi
@@ -145,7 +144,7 @@ fi
 # Zorin appearance schema (Zorin 18 specific)
 if gcheck "com.zorin.desktop.appearance"; then
     info "Zorin appearance schema..."
-    gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Dark'    2>/dev/null || true
+    gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Light'    2>/dev/null || true
     gs com.zorin.desktop.appearance icon-theme   'WhiteSur-light'   2>/dev/null || true
     gs com.zorin.desktop.appearance cursor-theme 'WhiteSur-cursors' 2>/dev/null || true
 fi
@@ -257,11 +256,11 @@ if [ -d "$(dirname "$GDM_DEFAULTS")" ]; then
 # GDM Greeter - macOS Theme (zorin-macos-theme)
 
 [org/gnome/desktop/interface]
-gtk-theme='WhiteSur-Dark'
+gtk-theme='WhiteSur-Light'
 icon-theme='WhiteSur-light'
 cursor-theme='WhiteSur-cursors'
 font-name='Cantarell 11'
-color-scheme='prefer-dark'
+color-scheme='default'
 
 [org/gnome/desktop/background]
 picture-uri='file://$WALLPAPER_DIR/macos-bigsur-classic.jpg'
@@ -282,7 +281,7 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  ✔  macOS theme applied to Zorin OS ${ZORIN_VERSION:-?}!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  Theme    : WhiteSur-Dark (GTK3 + GTK4/libadwaita, dark mode)"
+echo "  Theme    : WhiteSur-Light + dark mode via color-scheme (toggle works)"
 echo "  Icons    : WhiteSur-light"
 echo "  Cursors  : WhiteSur-cursors"
 echo "  Buttons  : ● ─ □  (left side, macOS style)"
