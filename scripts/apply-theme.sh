@@ -48,7 +48,7 @@ fi
 
 # ── 2. WhiteSur Icon Theme ────────────────────────────────────────────────────
 section "2. WhiteSur Icon Theme"
-if [ ! -d /usr/share/icons/WhiteSur ] && [ ! -d "$REAL_HOME/.local/share/icons/WhiteSur" ]; then
+if [ ! -d /usr/share/icons/WhiteSur-light ]; then
     info "Cloning WhiteSur-icon-theme..."
     git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git /tmp/WhiteSur-icon-theme
     cd /tmp/WhiteSur-icon-theme
@@ -60,48 +60,10 @@ else
     info "WhiteSur icons already present."
 fi
 
-# ── 2b. macOS-like Tray Icon Enhancement ─────────────────────────────────────
-section "2b. Tray Icon Enhancement (macOS Sonoma-like)"
-# Cupertino-Sonoma = macOS Sonoma-style status icons (wifi, bt, battery, volume)
-#                    used as PRIMARY icon theme
-# WhiteSur-light   = fallback for app icons (dock, file manager, etc.)
-# Papirus          = fallback for app indicator coverage (6,680+ panel icons)
-if ! dpkg -l papirus-icon-theme &>/dev/null; then
-    info "Installing Papirus icon theme (app indicator fallback)..."
-    apt-get install -y -qq papirus-icon-theme 2>/dev/null && info "Papirus installed." || warn "Papirus install failed — skipping."
-else
-    info "Papirus already installed."
-fi
-
-if [ ! -d /usr/share/icons/Cupertino-Sonoma ]; then
-    info "Cloning Cupertino-Sonoma icon theme (macOS Sonoma tray icons)..."
-    git clone --depth=1 https://github.com/USBA/Cupertino-Sonoma-iCons.git /tmp/Cupertino-Sonoma 2>/dev/null
-    if [ -d /tmp/Cupertino-Sonoma ]; then
-        # Create directory aliases so index.theme lookup works correctly
-        # panel/16-dark and panel/24-dark contain the white icons for dark top bar
-        ln -sfn 16-dark  /tmp/Cupertino-Sonoma/panel/16
-        ln -sfn 24-dark  /tmp/Cupertino-Sonoma/panel/24
-        ln -sfn scalable-dark /tmp/Cupertino-Sonoma/status/scalable
-        cp -r /tmp/Cupertino-Sonoma /usr/share/icons/Cupertino-Sonoma
-        rm -rf /tmp/Cupertino-Sonoma
-        info "Cupertino-Sonoma installed."
-    else
-        warn "Cupertino-Sonoma clone failed — skipping."
-    fi
-else
-    info "Cupertino-Sonoma already installed."
-fi
-
-# Cupertino-Sonoma inherits WhiteSur-light + Papirus for full app icon coverage
-CUPERTINO_INDEX="/usr/share/icons/Cupertino-Sonoma/index.theme"
-if [ -f "$CUPERTINO_INDEX" ] && ! grep -q "WhiteSur-light" "$CUPERTINO_INDEX"; then
-    sed -i 's/Inherits=Adwaita,hicolor/Inherits=WhiteSur-light,Papirus,Adwaita,hicolor/' "$CUPERTINO_INDEX"
-    info "Cupertino-Sonoma: WhiteSur-light + Papirus added as fallback icon sources."
-fi
-
-# Also keep Papirus and WhiteSur-light caches updated
+# ── 2b. Icon cache update ─────────────────────────────────────────────────────
+section "2b. Icon cache"
 gtk-update-icon-cache -f /usr/share/icons/WhiteSur-light/ 2>/dev/null || true
-[ -d /usr/share/icons/Papirus ] && gtk-update-icon-cache -f /usr/share/icons/Papirus/ 2>/dev/null || true
+gtk-update-icon-cache -f /usr/share/icons/WhiteSur-dark/  2>/dev/null || true
 
 # ── 3. WhiteSur Cursors ───────────────────────────────────────────────────────
 section "3. WhiteSur Cursors"
@@ -121,7 +83,7 @@ GTK4_DIR="$REAL_HOME/.config/gtk-4.0"
 ASSETS_DIR="$GTK4_DIR/windows-assets"
 mkdir -p "$GTK4_DIR" "$ASSETS_DIR"
 
-GRESOURCE=$(find /usr/share/themes/WhiteSur-Light -name "gtk.gresource" 2>/dev/null | head -1)
+GRESOURCE=$(find /usr/share/themes/WhiteSur-Dark -name "gtk.gresource" 2>/dev/null | head -1)
 if [ -n "$GRESOURCE" ] && command -v gresource &>/dev/null; then
     info "Extracting GTK4 CSS from gresource..."
     for res in $(gresource list "$GRESOURCE" 2>/dev/null); do
@@ -140,11 +102,25 @@ else
 fi
 chown -R "$REAL_USER:$REAL_USER" "$GTK4_DIR"
 
+# ── 4b. GTK3 dark settings ────────────────────────────────────────────────────
+GTK3_DIR="$REAL_HOME/.config/gtk-3.0"
+mkdir -p "$GTK3_DIR"
+cat > "$GTK3_DIR/settings.ini" << 'EOFGTK3'
+[Settings]
+gtk-theme-name=WhiteSur-Dark
+gtk-icon-theme-name=WhiteSur-light
+gtk-cursor-theme-name=WhiteSur-cursors
+gtk-font-name=Cantarell 11
+gtk-application-prefer-dark-theme=1
+EOFGTK3
+chown -R "$REAL_USER:$REAL_USER" "$GTK3_DIR"
+info "GTK3 dark settings configured."
+
 # ── 5. GNOME interface settings ───────────────────────────────────────────────
 section "5. GNOME theme settings"
 info "GTK / icon / cursor / font..."
 gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Dark'
-gs org.gnome.desktop.interface icon-theme           'Cupertino-Sonoma'
+gs org.gnome.desktop.interface icon-theme           'WhiteSur-light'
 gs org.gnome.desktop.interface cursor-theme         'WhiteSur-cursors'
 gs org.gnome.desktop.interface font-name            'Cantarell 11'
 gs org.gnome.desktop.interface document-font-name   'Cantarell 11'
@@ -170,7 +146,7 @@ fi
 if gcheck "com.zorin.desktop.appearance"; then
     info "Zorin appearance schema..."
     gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Dark'    2>/dev/null || true
-    gs com.zorin.desktop.appearance icon-theme   'Cupertino-Sonoma'   2>/dev/null || true
+    gs com.zorin.desktop.appearance icon-theme   'WhiteSur-light'   2>/dev/null || true
     gs com.zorin.desktop.appearance cursor-theme 'WhiteSur-cursors' 2>/dev/null || true
 fi
 
@@ -282,7 +258,7 @@ if [ -d "$(dirname "$GDM_DEFAULTS")" ]; then
 
 [org/gnome/desktop/interface]
 gtk-theme='WhiteSur-Dark'
-icon-theme='Cupertino-Sonoma'
+icon-theme='WhiteSur-light'
 cursor-theme='WhiteSur-cursors'
 font-name='Cantarell 11'
 color-scheme='prefer-dark'
@@ -306,8 +282,8 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  ✔  macOS theme applied to Zorin OS ${ZORIN_VERSION:-?}!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  Theme    : WhiteSur-Light (GTK3 + GTK4/libadwaita)"
-echo "  Icons    : Cupertino-Sonoma (tray) + WhiteSur-light + Papirus (fallback)"
+echo "  Theme    : WhiteSur-Dark (GTK3 + GTK4/libadwaita, dark mode)"
+echo "  Icons    : WhiteSur-light"
 echo "  Cursors  : WhiteSur-cursors"
 echo "  Buttons  : ● ─ □  (left side, macOS style)"
 echo "  Dock     : Bottom, 64px, centered, intellihide"
