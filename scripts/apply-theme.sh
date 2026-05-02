@@ -80,21 +80,20 @@ fi
 # ── 4. GTK4 / libadwaita theming ─────────────────────────────────────────────
 section "4. GTK4 / libadwaita CSS"
 GTK4_DIR="$REAL_HOME/.config/gtk-4.0"
-ASSETS_DIR="$GTK4_DIR/windows-assets"
+ASSETS_DIR="$GTK4_DIR/assets"
 mkdir -p "$GTK4_DIR" "$ASSETS_DIR"
 
+# Extract the FULL CSS (not @import wrappers) so GTK4 picks gtk.css or
+# gtk-dark.css automatically based on color-scheme toggle (prefer-dark <-> default)
 GRESOURCE=$(find /usr/share/themes/WhiteSur-Light -name "gtk.gresource" 2>/dev/null | head -1)
 if [ -n "$GRESOURCE" ] && command -v gresource &>/dev/null; then
-    info "Extracting GTK4 CSS from gresource..."
-    for res in $(gresource list "$GRESOURCE" 2>/dev/null); do
-        fname=$(basename "$res")
-        if [[ "$fname" == *.css ]]; then
-            gresource extract "$GRESOURCE" "$res" > "$GTK4_DIR/$fname"
-        elif [[ "$fname" == *.png ]]; then
-            gresource extract "$GRESOURCE" "$res" > "$ASSETS_DIR/$fname"
-        fi
+    info "Extracting WhiteSur GTK4 CSS (light + dark variants for toggle)..."
+    gresource extract "$GRESOURCE" /org/gnome/theme/gtk.css      > "$GTK4_DIR/gtk.css"      2>/dev/null || true
+    gresource extract "$GRESOURCE" /org/gnome/theme/gtk-dark.css > "$GTK4_DIR/gtk-dark.css" 2>/dev/null || true
+    for res in $(gresource list "$GRESOURCE" 2>/dev/null | grep "assets/"); do
+        gresource extract "$GRESOURCE" "$res" > "$ASSETS_DIR/$(basename "$res")" 2>/dev/null || true
     done
-    info "Extracted $(ls "$ASSETS_DIR" 2>/dev/null | wc -l) window button assets."
+    info "GTK4 CSS applied — dark/light toggle works via color-scheme."
 else
     warn "gresource not available — copying CSS from repo..."
     cp "$REPO_DIR/gtk4/gtk.css"      "$GTK4_DIR/gtk.css"
