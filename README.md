@@ -9,7 +9,7 @@ Transform your **Zorin OS 17/18** desktop into a macOS look-alike — one script
 | 1 | GTK3 theme | WhiteSur-Light |
 | 2 | GTK4 / libadwaita theme | WhiteSur CSS extracted from gresource |
 | 3 | Window button assets | 80 PNGs (close/minimize/maximize) |
-| 4 | Icon theme | WhiteSur-light |
+| 4 | Icon theme | WhiteSur-light + Papirus + Mkos-Big-Sur (tray fallback) |
 | 5 | Cursor theme | WhiteSur-cursors |
 | 6 | Shell (top bar) theme | WhiteSur-Light |
 | 7 | Window buttons | `● ─ □` left side (macOS style) |
@@ -53,6 +53,8 @@ Resets everything back to Zorin OS 18 defaults.
 - [WhiteSur GTK Theme](https://github.com/vinceliuice/WhiteSur-gtk-theme)
 - [WhiteSur Icon Theme](https://github.com/vinceliuice/WhiteSur-icon-theme)
 - [WhiteSur Cursors](https://github.com/vinceliuice/WhiteSur-cursors)
+- [Papirus icon theme](https://github.com/PapirusDevelopmentTeam/papirus-icon-theme) — 6,680+ app indicator/panel icons (tray fallback)
+- [Mkos-Big-Sur icon theme](https://github.com/zayronxio/Mkos-Big-Sur) — macOS Big Sur-style panel icons
 
 ## Files
 
@@ -77,6 +79,7 @@ zorin-macos-theme/
 - **GDM login screen**: Themed via `/etc/gdm3/greeter.dconf-defaults`.
 - **Dock layout**: The `panel-element-positions` setting hides the system tray, clock, and activities button — leaving only the app taskbar, centered, like a real macOS dock. Detected per monitor ID automatically.
 - **Intellihide**: Dock hides when a focused window overlaps it, reveals on hover or pointer pressure.
+- **Tray/panel icons**: WhiteSur-light provides 1,238 system status symbolic icons. Papirus (6,680 panel icons) and Mkos-Big-Sur are added to the icon inheritance chain for maximum app indicator coverage and macOS-style appearance.
 
 ## Companion project
 
@@ -88,6 +91,8 @@ Want offline macOS-style dictation (PT-BR / any language)?
 - [WhiteSur GTK Theme](https://github.com/vinceliuice/WhiteSur-gtk-theme) by Vince Liuice — GPL-3.0
 - [WhiteSur Icon Theme](https://github.com/vinceliuice/WhiteSur-icon-theme) by Vince Liuice — GPL-3.0
 - [WhiteSur Cursors](https://github.com/vinceliuice/WhiteSur-cursors) by Vince Liuice
+- [Papirus Icon Theme](https://github.com/PapirusDevelopmentTeam/papirus-icon-theme) — GPL-3.0
+- [Mkos-Big-Sur Icon Theme](https://github.com/zayronxio/Mkos-Big-Sur) by zayronxio
 
 ## License
 

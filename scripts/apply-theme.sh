@@ -60,6 +60,39 @@ else
     info "WhiteSur icons already present."
 fi
 
+# ── 2b. macOS-like Tray Icon Enhancement ─────────────────────────────────────
+section "2b. Tray Icon Enhancement (macOS-like)"
+# Papirus provides 6,680+ app indicator/panel icons (covers most app tray icons)
+# Mkos-Big-Sur provides macOS Big Sur style panel icons
+# We add both to WhiteSur-light's icon inheritance chain for best coverage.
+if ! dpkg -l papirus-icon-theme &>/dev/null; then
+    info "Installing Papirus icon theme (panel icon coverage)..."
+    apt-get install -y -qq papirus-icon-theme 2>/dev/null && info "Papirus installed." || warn "Papirus install failed — skipping."
+else
+    info "Papirus already installed."
+fi
+
+if [ ! -d /usr/share/icons/Mkos-Big-Sur ]; then
+    info "Downloading Mkos-Big-Sur icon theme..."
+    curl -sL -o /tmp/mkos.tar.xz "https://github.com/zayronxio/Mkos-Big-Sur/releases/download/0.3/Mkos-Big-Sur.tar.xz" && \
+        tar xf /tmp/mkos.tar.xz -C /usr/share/icons/ && \
+        rm -f /tmp/mkos.tar.xz && \
+        info "Mkos-Big-Sur installed." || warn "Mkos-Big-Sur install failed — skipping."
+else
+    info "Mkos-Big-Sur already installed."
+fi
+
+# Update WhiteSur-light inheritance to fall back to Papirus + Mkos-Big-Sur
+WHITESUR_INDEX="/usr/share/icons/WhiteSur-light/index.theme"
+if [ -f "$WHITESUR_INDEX" ] && ! grep -q "Mkos-Big-Sur" "$WHITESUR_INDEX"; then
+    sed -i 's/Inherits=hicolor/Inherits=Mkos-Big-Sur,Papirus,hicolor/' "$WHITESUR_INDEX"
+    info "WhiteSur-light: Mkos-Big-Sur + Papirus added as fallback icon sources."
+fi
+# Refresh icon cache
+gtk-update-icon-cache -f /usr/share/icons/WhiteSur-light/ 2>/dev/null || true
+[ -d /usr/share/icons/Papirus ] && gtk-update-icon-cache -f /usr/share/icons/Papirus/ 2>/dev/null || true
+[ -d /usr/share/icons/Mkos-Big-Sur ] && gtk-update-icon-cache -f /usr/share/icons/Mkos-Big-Sur/ 2>/dev/null || true
+
 # ── 3. WhiteSur Cursors ───────────────────────────────────────────────────────
 section "3. WhiteSur Cursors"
 if [ ! -d /usr/share/icons/WhiteSur-cursors ]; then
@@ -261,7 +294,7 @@ echo -e "${GREEN}  ✔  macOS theme applied to Zorin OS ${ZORIN_VERSION:-?}!${NC
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "  Theme    : WhiteSur-Light (GTK3 + GTK4/libadwaita)"
-echo "  Icons    : WhiteSur-light"
+echo "  Icons    : WhiteSur-light + Papirus + Mkos-Big-Sur (tray)"
 echo "  Cursors  : WhiteSur-cursors"
 echo "  Buttons  : ● ─ □  (left side, macOS style)"
 echo "  Dock     : Bottom, 64px, centered, intellihide"
