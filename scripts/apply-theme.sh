@@ -34,16 +34,16 @@ apt-get install -y -qq git curl unzip libglib2.0-bin 2>/dev/null || true
 
 # ── 1. WhiteSur GTK Theme ─────────────────────────────────────────────────────
 section "1. WhiteSur GTK Theme"
-if [ ! -d /usr/share/themes/WhiteSur-Light ]; then
+if [ ! -d /usr/share/themes/WhiteSur-Dark ]; then
     info "Cloning WhiteSur-gtk-theme..."
     git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git /tmp/WhiteSur-gtk-theme
     cd /tmp/WhiteSur-gtk-theme
-    bash install.sh -t all --dest /usr/share/themes 2>/dev/null || bash install.sh -t all 2>/dev/null || true
+    bash install.sh -c dark -t default --dest /usr/share/themes 2>/dev/null || bash install.sh -c dark -t default 2>/dev/null || true
     cd "$REPO_DIR"
     rm -rf /tmp/WhiteSur-gtk-theme
-    info "WhiteSur GTK theme installed."
+    info "WhiteSur GTK Dark theme installed."
 else
-    info "WhiteSur GTK theme already present."
+    info "WhiteSur GTK Dark theme already present."
 fi
 
 # ── 2. WhiteSur Icon Theme ────────────────────────────────────────────────────
@@ -143,13 +143,13 @@ chown -R "$REAL_USER:$REAL_USER" "$GTK4_DIR"
 # ── 5. GNOME interface settings ───────────────────────────────────────────────
 section "5. GNOME theme settings"
 info "GTK / icon / cursor / font..."
-gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Light'
+gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Dark'
 gs org.gnome.desktop.interface icon-theme           'Cupertino-Sonoma'
 gs org.gnome.desktop.interface cursor-theme         'WhiteSur-cursors'
 gs org.gnome.desktop.interface font-name            'Cantarell 11'
 gs org.gnome.desktop.interface document-font-name   'Cantarell 11'
 gs org.gnome.desktop.interface monospace-font-name  'Source Code Pro 10'
-gs org.gnome.desktop.interface color-scheme         'default'
+gs org.gnome.desktop.interface color-scheme         'prefer-dark'
 gs org.gnome.desktop.interface font-antialiasing    'grayscale'
 gs org.gnome.desktop.interface font-hinting         'slight'
 
@@ -161,7 +161,7 @@ gs org.gnome.desktop.wm.preferences action-double-click-titlebar 'toggle-maximiz
 
 info "Shell theme..."
 if gcheck "org.gnome.shell.extensions.user-theme"; then
-    gs org.gnome.shell.extensions.user-theme name 'WhiteSur-Light'
+    gs org.gnome.shell.extensions.user-theme name 'WhiteSur-Dark'
 else
     warn "user-theme extension not found — shell theme skipped."
 fi
@@ -169,7 +169,7 @@ fi
 # Zorin appearance schema (Zorin 18 specific)
 if gcheck "com.zorin.desktop.appearance"; then
     info "Zorin appearance schema..."
-    gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Light'   2>/dev/null || true
+    gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Dark'    2>/dev/null || true
     gs com.zorin.desktop.appearance icon-theme   'Cupertino-Sonoma'   2>/dev/null || true
     gs com.zorin.desktop.appearance cursor-theme 'WhiteSur-cursors' 2>/dev/null || true
 fi
@@ -265,9 +265,12 @@ info "Wallpaper: macos-bigsur-classic.jpg"
 
 # ── 9. GTK_THEME env ──────────────────────────────────────────────────────────
 PROFILE="$REAL_HOME/.profile"
-if ! grep -q "GTK_THEME=WhiteSur-Light" "$PROFILE" 2>/dev/null; then
-    echo 'export GTK_THEME=WhiteSur-Light' >> "$PROFILE"
-    info "GTK_THEME=WhiteSur-Light added to ~/.profile"
+if grep -q "GTK_THEME=WhiteSur-Light" "$PROFILE" 2>/dev/null; then
+    sed -i "s/GTK_THEME=WhiteSur-Light/GTK_THEME=WhiteSur-Dark/" "$PROFILE"
+    info "GTK_THEME updated to WhiteSur-Dark in ~/.profile"
+elif ! grep -q "GTK_THEME=WhiteSur-Dark" "$PROFILE" 2>/dev/null; then
+    echo 'export GTK_THEME=WhiteSur-Dark' >> "$PROFILE"
+    info "GTK_THEME=WhiteSur-Dark added to ~/.profile"
 fi
 
 # ── 10. GDM login screen ──────────────────────────────────────────────────────
@@ -278,11 +281,11 @@ if [ -d "$(dirname "$GDM_DEFAULTS")" ]; then
 # GDM Greeter - macOS Theme (zorin-macos-theme)
 
 [org/gnome/desktop/interface]
-gtk-theme='WhiteSur-Light'
+gtk-theme='WhiteSur-Dark'
 icon-theme='Cupertino-Sonoma'
 cursor-theme='WhiteSur-cursors'
 font-name='Cantarell 11'
-color-scheme='default'
+color-scheme='prefer-dark'
 
 [org/gnome/desktop/background]
 picture-uri='file://$WALLPAPER_DIR/macos-bigsur-classic.jpg'
