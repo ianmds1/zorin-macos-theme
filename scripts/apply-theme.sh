@@ -34,16 +34,17 @@ apt-get install -y -qq git curl unzip libglib2.0-bin 2>/dev/null || true
 
 # ── 1. WhiteSur GTK Theme ─────────────────────────────────────────────────────
 section "1. WhiteSur GTK Theme"
-if [ ! -d /usr/share/themes/WhiteSur-Dark ]; then
+if [ ! -d /usr/share/themes/WhiteSur-Light ] || [ ! -d /usr/share/themes/WhiteSur-Dark ]; then
     info "Cloning WhiteSur-gtk-theme..."
     git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git /tmp/WhiteSur-gtk-theme
     cd /tmp/WhiteSur-gtk-theme
-    bash install.sh -c dark -t default --dest /usr/share/themes 2>/dev/null || bash install.sh -c dark -t default 2>/dev/null || true
+    bash install.sh -c light -t default --dest /usr/share/themes 2>/dev/null || bash install.sh -c light -t default 2>/dev/null || true
+    bash install.sh -c dark  -t default --dest /usr/share/themes 2>/dev/null || bash install.sh -c dark  -t default 2>/dev/null || true
     cd "$REPO_DIR"
     rm -rf /tmp/WhiteSur-gtk-theme
-    info "WhiteSur GTK Dark theme installed."
+    info "WhiteSur GTK Light/Dark themes installed."
 else
-    info "WhiteSur GTK Dark theme already present."
+    info "WhiteSur GTK Light/Dark themes already present."
 fi
 
 # ── 2. WhiteSur Icon Theme ────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ if [ -n "$GRESOURCE" ] && command -v gresource &>/dev/null; then
     for res in $(gresource list "$GRESOURCE" 2>/dev/null | grep "assets/"); do
         gresource extract "$GRESOURCE" "$res" > "$ASSETS_DIR/$(basename "$res")" 2>/dev/null || true
     done
+    ln -sfn assets "$GTK4_DIR/windows-assets"
     info "GTK4 CSS applied — dark/light toggle works via color-scheme."
 else
     warn "gresource not available — copying CSS from repo..."
@@ -110,9 +112,10 @@ gtk-theme-name=WhiteSur-Light
 gtk-icon-theme-name=WhiteSur-light
 gtk-cursor-theme-name=WhiteSur-cursors
 gtk-font-name=Cantarell 11
+gtk-decoration-layout=close,minimize,maximize:
 EOFGTK3
 chown -R "$REAL_USER:$REAL_USER" "$GTK3_DIR"
-info "GTK3 dark settings configured."
+info "GTK3 settings configured."
 
 # ── 5. GNOME interface settings ───────────────────────────────────────────────
 section "5. GNOME theme settings"
@@ -129,6 +132,7 @@ gs org.gnome.desktop.interface font-hinting         'slight'
 
 info "Window manager: macOS button layout (left) + titlebar font..."
 gs org.gnome.desktop.wm.preferences button-layout          'close,minimize,maximize:'
+sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" gsettings set org.gnome.desktop.interface gtk-decoration-layout 'close,minimize,maximize:' 2>/dev/null || true
 gs org.gnome.desktop.wm.preferences titlebar-font          'Cantarell Bold 11'
 gs org.gnome.desktop.wm.preferences titlebar-uses-system-font true
 gs org.gnome.desktop.wm.preferences action-double-click-titlebar 'toggle-maximize'
@@ -147,6 +151,34 @@ if gcheck "com.zorin.desktop.appearance"; then
     gs com.zorin.desktop.appearance icon-theme   'WhiteSur-light'   2>/dev/null || true
     gs com.zorin.desktop.appearance cursor-theme 'WhiteSur-cursors' 2>/dev/null || true
 fi
+
+if gcheck "com.zorin.desktop.auto-theme"; then
+    info "Zorin dark/light tray toggle: WhiteSur Light/Dark mapping..."
+    gs com.zorin.desktop.auto-theme day-theme   'WhiteSur-Light'  2>/dev/null || true
+    gs com.zorin.desktop.auto-theme night-theme 'WhiteSur-Dark'   2>/dev/null || true
+fi
+
+# The GNOME/Zorin dark style toggle changes color-scheme, but custom GTK themes
+# do not automatically switch between WhiteSur-Light and WhiteSur-Dark. Keep
+# them synchronized in the user session and at next login.
+section "5b. Dark/light toggle sync"
+SYNC_BIN="$REAL_HOME/.local/bin/zorin-macos-theme-sync"
+AUTOSTART_DIR="$REAL_HOME/.config/autostart"
+mkdir -p "$(dirname "$SYNC_BIN")" "$AUTOSTART_DIR"
+install -m 0755 "$REPO_DIR/scripts/zorin-macos-theme-sync" "$SYNC_BIN"
+cat > "$AUTOSTART_DIR/zorin-macos-theme-sync.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Zorin macOS Theme Sync
+Comment=Sync WhiteSur Light/Dark themes with GNOME color-scheme toggle
+Exec=$SYNC_BIN
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+EOF
+chown "$REAL_USER:$REAL_USER" "$SYNC_BIN" "$AUTOSTART_DIR/zorin-macos-theme-sync.desktop"
+sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" "$SYNC_BIN" --once 2>/dev/null || true
+info "Dark/light toggle sync installed."
 
 # ── 6. Zorin Taskbar — full macOS dock config ─────────────────────────────────
 section "6. Dock (zorin-taskbar — macOS style)"
@@ -239,12 +271,9 @@ info "Wallpaper: macos-bigsur-classic.jpg"
 
 # ── 9. GTK_THEME env ──────────────────────────────────────────────────────────
 PROFILE="$REAL_HOME/.profile"
-if grep -q "GTK_THEME=WhiteSur-Light" "$PROFILE" 2>/dev/null; then
-    sed -i "s/GTK_THEME=WhiteSur-Light/GTK_THEME=WhiteSur-Dark/" "$PROFILE"
-    info "GTK_THEME updated to WhiteSur-Dark in ~/.profile"
-elif ! grep -q "GTK_THEME=WhiteSur-Dark" "$PROFILE" 2>/dev/null; then
-    echo 'export GTK_THEME=WhiteSur-Dark' >> "$PROFILE"
-    info "GTK_THEME=WhiteSur-Dark added to ~/.profile"
+if grep -q "GTK_THEME=WhiteSur-" "$PROFILE" 2>/dev/null; then
+    sed -i '/GTK_THEME=WhiteSur-/d' "$PROFILE"
+    info "Removed fixed GTK_THEME from ~/.profile so dark/light toggle can work."
 fi
 
 # ── 10. GDM login screen ──────────────────────────────────────────────────────
