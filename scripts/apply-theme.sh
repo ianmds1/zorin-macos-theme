@@ -61,37 +61,47 @@ else
 fi
 
 # ── 2b. macOS-like Tray Icon Enhancement ─────────────────────────────────────
-section "2b. Tray Icon Enhancement (macOS-like)"
-# Papirus provides 6,680+ app indicator/panel icons (covers most app tray icons)
-# Mkos-Big-Sur provides macOS Big Sur style panel icons
-# We add both to WhiteSur-light's icon inheritance chain for best coverage.
+section "2b. Tray Icon Enhancement (macOS Sonoma-like)"
+# Cupertino-Sonoma = macOS Sonoma-style status icons (wifi, bt, battery, volume)
+#                    used as PRIMARY icon theme
+# WhiteSur-light   = fallback for app icons (dock, file manager, etc.)
+# Papirus          = fallback for app indicator coverage (6,680+ panel icons)
 if ! dpkg -l papirus-icon-theme &>/dev/null; then
-    info "Installing Papirus icon theme (panel icon coverage)..."
+    info "Installing Papirus icon theme (app indicator fallback)..."
     apt-get install -y -qq papirus-icon-theme 2>/dev/null && info "Papirus installed." || warn "Papirus install failed — skipping."
 else
     info "Papirus already installed."
 fi
 
-if [ ! -d /usr/share/icons/Mkos-Big-Sur ]; then
-    info "Downloading Mkos-Big-Sur icon theme..."
-    curl -sL -o /tmp/mkos.tar.xz "https://github.com/zayronxio/Mkos-Big-Sur/releases/download/0.3/Mkos-Big-Sur.tar.xz" && \
-        tar xf /tmp/mkos.tar.xz -C /usr/share/icons/ && \
-        rm -f /tmp/mkos.tar.xz && \
-        info "Mkos-Big-Sur installed." || warn "Mkos-Big-Sur install failed — skipping."
+if [ ! -d /usr/share/icons/Cupertino-Sonoma ]; then
+    info "Cloning Cupertino-Sonoma icon theme (macOS Sonoma tray icons)..."
+    git clone --depth=1 https://github.com/USBA/Cupertino-Sonoma-iCons.git /tmp/Cupertino-Sonoma 2>/dev/null
+    if [ -d /tmp/Cupertino-Sonoma ]; then
+        # Create directory aliases so index.theme lookup works correctly
+        # panel/16-dark and panel/24-dark contain the white icons for dark top bar
+        ln -sfn 16-dark  /tmp/Cupertino-Sonoma/panel/16
+        ln -sfn 24-dark  /tmp/Cupertino-Sonoma/panel/24
+        ln -sfn scalable-dark /tmp/Cupertino-Sonoma/status/scalable
+        cp -r /tmp/Cupertino-Sonoma /usr/share/icons/Cupertino-Sonoma
+        rm -rf /tmp/Cupertino-Sonoma
+        info "Cupertino-Sonoma installed."
+    else
+        warn "Cupertino-Sonoma clone failed — skipping."
+    fi
 else
-    info "Mkos-Big-Sur already installed."
+    info "Cupertino-Sonoma already installed."
 fi
 
-# Update WhiteSur-light inheritance to fall back to Papirus + Mkos-Big-Sur
-WHITESUR_INDEX="/usr/share/icons/WhiteSur-light/index.theme"
-if [ -f "$WHITESUR_INDEX" ] && ! grep -q "Mkos-Big-Sur" "$WHITESUR_INDEX"; then
-    sed -i 's/Inherits=hicolor/Inherits=Mkos-Big-Sur,Papirus,hicolor/' "$WHITESUR_INDEX"
-    info "WhiteSur-light: Mkos-Big-Sur + Papirus added as fallback icon sources."
+# Cupertino-Sonoma inherits WhiteSur-light + Papirus for full app icon coverage
+CUPERTINO_INDEX="/usr/share/icons/Cupertino-Sonoma/index.theme"
+if [ -f "$CUPERTINO_INDEX" ] && ! grep -q "WhiteSur-light" "$CUPERTINO_INDEX"; then
+    sed -i 's/Inherits=Adwaita,hicolor/Inherits=WhiteSur-light,Papirus,Adwaita,hicolor/' "$CUPERTINO_INDEX"
+    info "Cupertino-Sonoma: WhiteSur-light + Papirus added as fallback icon sources."
 fi
-# Refresh icon cache
+
+# Also keep Papirus and WhiteSur-light caches updated
 gtk-update-icon-cache -f /usr/share/icons/WhiteSur-light/ 2>/dev/null || true
 [ -d /usr/share/icons/Papirus ] && gtk-update-icon-cache -f /usr/share/icons/Papirus/ 2>/dev/null || true
-[ -d /usr/share/icons/Mkos-Big-Sur ] && gtk-update-icon-cache -f /usr/share/icons/Mkos-Big-Sur/ 2>/dev/null || true
 
 # ── 3. WhiteSur Cursors ───────────────────────────────────────────────────────
 section "3. WhiteSur Cursors"
@@ -134,7 +144,7 @@ chown -R "$REAL_USER:$REAL_USER" "$GTK4_DIR"
 section "5. GNOME theme settings"
 info "GTK / icon / cursor / font..."
 gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Light'
-gs org.gnome.desktop.interface icon-theme           'WhiteSur-light'
+gs org.gnome.desktop.interface icon-theme           'Cupertino-Sonoma'
 gs org.gnome.desktop.interface cursor-theme         'WhiteSur-cursors'
 gs org.gnome.desktop.interface font-name            'Cantarell 11'
 gs org.gnome.desktop.interface document-font-name   'Cantarell 11'
@@ -160,7 +170,7 @@ fi
 if gcheck "com.zorin.desktop.appearance"; then
     info "Zorin appearance schema..."
     gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Light'   2>/dev/null || true
-    gs com.zorin.desktop.appearance icon-theme   'WhiteSur-light'   2>/dev/null || true
+    gs com.zorin.desktop.appearance icon-theme   'Cupertino-Sonoma'   2>/dev/null || true
     gs com.zorin.desktop.appearance cursor-theme 'WhiteSur-cursors' 2>/dev/null || true
 fi
 
@@ -269,7 +279,7 @@ if [ -d "$(dirname "$GDM_DEFAULTS")" ]; then
 
 [org/gnome/desktop/interface]
 gtk-theme='WhiteSur-Light'
-icon-theme='WhiteSur-light'
+icon-theme='Cupertino-Sonoma'
 cursor-theme='WhiteSur-cursors'
 font-name='Cantarell 11'
 color-scheme='default'
@@ -294,7 +304,7 @@ echo -e "${GREEN}  ✔  macOS theme applied to Zorin OS ${ZORIN_VERSION:-?}!${NC
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "  Theme    : WhiteSur-Light (GTK3 + GTK4/libadwaita)"
-echo "  Icons    : WhiteSur-light + Papirus + Mkos-Big-Sur (tray)"
+echo "  Icons    : Cupertino-Sonoma (tray) + WhiteSur-light + Papirus (fallback)"
 echo "  Cursors  : WhiteSur-cursors"
 echo "  Buttons  : ● ─ □  (left side, macOS style)"
 echo "  Dock     : Bottom, 64px, centered, intellihide"
