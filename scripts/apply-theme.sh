@@ -1,5 +1,5 @@
 #!/bin/bash
-# zorin-macos-theme — apply macOS look to Zorin OS
+# zorin-macos-theme — apply macOS look to Zorin OS 17/18
 # https://github.com/ianmds1/zorin-macos-theme
 set -e
 
@@ -17,100 +17,179 @@ REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
 DBUS="unix:path=/run/user/${REAL_UID}/bus"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-gsetting() { sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" gsettings set "$@"; }
+gs() { sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" gsettings set "$@" 2>/dev/null || warn "gsettings failed: $*"; }
+gcheck() { sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" gsettings list-schemas 2>/dev/null | grep -q "$1"; }
 
-section "1. Installing WhiteSur theme"
+# ── Detect Zorin OS version ───────────────────────────────────────────────────
+ZORIN_VERSION=""
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    [[ "$ID" == "zorin" ]] && ZORIN_VERSION="$VERSION_ID"
+fi
+[ -n "$ZORIN_VERSION" ] && info "Zorin OS $ZORIN_VERSION detected." || warn "Not Zorin OS — some steps may not apply."
+
+# ── 0. Dependencies ───────────────────────────────────────────────────────────
+section "0. Dependencies"
+apt-get install -y -qq git curl unzip libglib2.0-bin 2>/dev/null || true
+
+# ── 1. WhiteSur GTK Theme ─────────────────────────────────────────────────────
+section "1. WhiteSur GTK Theme"
 if [ ! -d /usr/share/themes/WhiteSur-Light ]; then
     info "Cloning WhiteSur-gtk-theme..."
     git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git /tmp/WhiteSur-gtk-theme
     cd /tmp/WhiteSur-gtk-theme
-    sudo -u "$REAL_USER" bash install.sh -t all --nautilus --flatpak 2>/dev/null || \
-        bash install.sh -t all 2>/dev/null || true
+    bash install.sh -t all --dest /usr/share/themes 2>/dev/null || bash install.sh -t all 2>/dev/null || true
     cd "$REPO_DIR"
     rm -rf /tmp/WhiteSur-gtk-theme
+    info "WhiteSur GTK theme installed."
 else
-    info "WhiteSur-gtk-theme already installed."
+    info "WhiteSur GTK theme already present."
 fi
 
-section "2. Installing WhiteSur icon theme"
-if [ ! -d /usr/share/icons/WhiteSur ]; then
+# ── 2. WhiteSur Icon Theme ────────────────────────────────────────────────────
+section "2. WhiteSur Icon Theme"
+if [ ! -d /usr/share/icons/WhiteSur ] && [ ! -d "$REAL_HOME/.local/share/icons/WhiteSur" ]; then
     info "Cloning WhiteSur-icon-theme..."
     git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git /tmp/WhiteSur-icon-theme
     cd /tmp/WhiteSur-icon-theme
-    sudo -u "$REAL_USER" bash install.sh 2>/dev/null || bash install.sh 2>/dev/null || true
+    bash install.sh --dest /usr/share/icons 2>/dev/null || sudo -u "$REAL_USER" bash install.sh 2>/dev/null || true
     cd "$REPO_DIR"
     rm -rf /tmp/WhiteSur-icon-theme
+    info "WhiteSur icons installed."
 else
-    info "WhiteSur-icon-theme already installed."
+    info "WhiteSur icons already present."
 fi
 
-section "3. Installing WhiteSur cursors"
+# ── 3. WhiteSur Cursors ───────────────────────────────────────────────────────
+section "3. WhiteSur Cursors"
 if [ ! -d /usr/share/icons/WhiteSur-cursors ]; then
     info "Cloning WhiteSur-cursors..."
     git clone --depth=1 https://github.com/vinceliuice/WhiteSur-cursors.git /tmp/WhiteSur-cursors
     cp -r /tmp/WhiteSur-cursors/WhiteSur-cursors /usr/share/icons/
     rm -rf /tmp/WhiteSur-cursors
+    info "WhiteSur cursors installed."
 else
-    info "WhiteSur-cursors already installed."
+    info "WhiteSur cursors already present."
 fi
 
-section "4. GTK4 / libadwaita theming"
-info "Extracting WhiteSur GTK4 CSS..."
+# ── 4. GTK4 / libadwaita theming ─────────────────────────────────────────────
+section "4. GTK4 / libadwaita CSS"
 GTK4_DIR="$REAL_HOME/.config/gtk-4.0"
 ASSETS_DIR="$GTK4_DIR/windows-assets"
 mkdir -p "$GTK4_DIR" "$ASSETS_DIR"
 
-# Try to extract from gresource (best quality)
 GRESOURCE=$(find /usr/share/themes/WhiteSur-Light -name "gtk.gresource" 2>/dev/null | head -1)
-if [ -n "$GRESOURCE" ]; then
-    info "Extracting from gresource: $GRESOURCE"
-    TMPDIR_GTK=$(mktemp -d)
-    cd "$TMPDIR_GTK"
+if [ -n "$GRESOURCE" ] && command -v gresource &>/dev/null; then
+    info "Extracting GTK4 CSS from gresource..."
     for res in $(gresource list "$GRESOURCE" 2>/dev/null); do
         fname=$(basename "$res")
         if [[ "$fname" == *.css ]]; then
-            gresource extract "$GRESOURCE" "$res" > "$GTK4_DIR/$fname" 2>/dev/null && \
-                info "  Extracted: $fname"
+            gresource extract "$GRESOURCE" "$res" > "$GTK4_DIR/$fname"
         elif [[ "$fname" == *.png ]]; then
-            gresource extract "$GRESOURCE" "$res" > "$ASSETS_DIR/$fname" 2>/dev/null
+            gresource extract "$GRESOURCE" "$res" > "$ASSETS_DIR/$fname"
         fi
     done
-    cd "$REPO_DIR"
-    rm -rf "$TMPDIR_GTK"
-    info "Extracted $(ls "$ASSETS_DIR" | wc -l) window button assets."
+    info "Extracted $(ls "$ASSETS_DIR" 2>/dev/null | wc -l) window button assets."
 else
-    # Fallback: copy from repo
-    warn "gresource not found, copying from repo..."
-    cp "$REPO_DIR/gtk4/gtk.css" "$GTK4_DIR/gtk.css"
+    warn "gresource not available — copying CSS from repo..."
+    cp "$REPO_DIR/gtk4/gtk.css"      "$GTK4_DIR/gtk.css"
     cp "$REPO_DIR/gtk4/gtk-dark.css" "$GTK4_DIR/gtk-dark.css"
 fi
-
 chown -R "$REAL_USER:$REAL_USER" "$GTK4_DIR"
 
-section "5. Applying GNOME settings"
-info "Setting GTK/icon/cursor themes..."
-gsetting org.gnome.desktop.interface gtk-theme 'WhiteSur-Light'
-gsetting org.gnome.desktop.interface icon-theme 'WhiteSur-light'
-gsetting org.gnome.desktop.interface cursor-theme 'WhiteSur-cursors'
-gsetting org.gnome.desktop.interface font-name 'Cantarell 11'
-gsetting org.gnome.desktop.interface color-scheme 'default'
+# ── 5. GNOME interface settings ───────────────────────────────────────────────
+section "5. GNOME theme settings"
+info "GTK / icon / cursor / font..."
+gs org.gnome.desktop.interface gtk-theme            'WhiteSur-Light'
+gs org.gnome.desktop.interface icon-theme           'WhiteSur-light'
+gs org.gnome.desktop.interface cursor-theme         'WhiteSur-cursors'
+gs org.gnome.desktop.interface font-name            'Cantarell 11'
+gs org.gnome.desktop.interface document-font-name   'Cantarell 11'
+gs org.gnome.desktop.interface monospace-font-name  'Source Code Pro 10'
+gs org.gnome.desktop.interface color-scheme         'default'
+gs org.gnome.desktop.interface font-antialiasing    'grayscale'
+gs org.gnome.desktop.interface font-hinting         'slight'
 
-info "Setting window button layout (macOS: left side)..."
-gsetting org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:'
+info "Window manager: macOS button layout (left) + titlebar font..."
+gs org.gnome.desktop.wm.preferences button-layout          'close,minimize,maximize:'
+gs org.gnome.desktop.wm.preferences titlebar-font          'Cantarell Bold 11'
+gs org.gnome.desktop.wm.preferences titlebar-uses-system-font true
+gs org.gnome.desktop.wm.preferences action-double-click-titlebar 'toggle-maximize'
 
-info "Setting shell theme..."
-gsetting org.gnome.shell.extensions.user-theme name 'WhiteSur-Light' 2>/dev/null || \
-    warn "user-theme extension not active — shell theme not applied"
+info "Shell theme..."
+if gcheck "org.gnome.shell.extensions.user-theme"; then
+    gs org.gnome.shell.extensions.user-theme name 'WhiteSur-Light'
+else
+    warn "user-theme extension not found — shell theme skipped."
+fi
 
-section "6. Dock configuration (macOS style)"
-info "Configuring zorin-taskbar dock..."
-gsetting org.gnome.shell.extensions.zorin-taskbar panel-position 'BOTTOM' 2>/dev/null || true
-gsetting org.gnome.shell.extensions.zorin-taskbar panel-size 64 2>/dev/null || true
+# Zorin appearance schema (Zorin 18 specific)
+if gcheck "com.zorin.desktop.appearance"; then
+    info "Zorin appearance schema..."
+    gs com.zorin.desktop.appearance gtk-theme    'WhiteSur-Light'   2>/dev/null || true
+    gs com.zorin.desktop.appearance icon-theme   'WhiteSur-light'   2>/dev/null || true
+    gs com.zorin.desktop.appearance cursor-theme 'WhiteSur-cursors' 2>/dev/null || true
+fi
 
-info "Removing icon padding..."
-SHELL_CSS="/usr/share/themes/WhiteSur-Light/gnome-shell/gnome-shell.css"
-if [ -f "$SHELL_CSS" ] && ! grep -q "natural-hpadding: 0px" "$SHELL_CSS"; then
-    cat >> "$SHELL_CSS" << 'EOF'
+# ── 6. Zorin Taskbar — full macOS dock config ─────────────────────────────────
+section "6. Dock (zorin-taskbar — macOS style)"
+if gcheck "org.gnome.shell.extensions.zorin-taskbar"; then
+    ZTASK="org.gnome.shell.extensions.zorin-taskbar"
+    info "Panel position / size / margin..."
+    gs $ZTASK panel-position   'BOTTOM'
+    gs $ZTASK panel-size       64
+    gs $ZTASK panel-margin     16
+
+    info "Intellihide (auto-hide when windows overlap)..."
+    gs $ZTASK intellihide                    true
+    gs $ZTASK intellihide-behaviour          'FOCUSED_WINDOWS'
+    gs $ZTASK intellihide-hide-from-windows  true
+    gs $ZTASK intellihide-use-pressure       true
+    gs $ZTASK intellihide-use-pointer        true
+    gs $ZTASK intellihide-revealed-hover     true
+    gs $ZTASK intellihide-show-in-fullscreen false
+    gs $ZTASK intellihide-show-on-notification false
+
+    info "Click behavior..."
+    gs $ZTASK click-action          'CYCLE-MIN'
+    gs $ZTASK middle-click-action   'LAUNCH'
+    gs $ZTASK shift-click-action    'MINIMIZE'
+    gs $ZTASK scroll-icon-action    'CYCLE_WINDOWS'
+    gs $ZTASK activate-single-window true
+    gs $ZTASK minimize-shift        true
+    gs $ZTASK peek-mode             true
+    gs $ZTASK preview-middle-click-close true
+
+    info "App grouping / appearance..."
+    gs $ZTASK group-apps                  true
+    gs $ZTASK group-apps-use-launchers    true
+    gs $ZTASK group-apps-use-fixed-width  true
+    gs $ZTASK group-apps-label-max-width  0
+    gs $ZTASK dot-style-focused           'CILIORA'
+    gs $ZTASK dot-style-unfocused         'DOTS'
+    gs $ZTASK global-border-radius        3
+    gs $ZTASK progress-show-bar           true
+    gs $ZTASK progress-show-count         true
+
+    info "Panel layout: taskbar only, centered (macOS dock style)..."
+    # Detect current monitor identifier
+    MONITOR_ID=$(sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" \
+        gsettings get $ZTASK panel-sizes 2>/dev/null | grep -oP '"[^"]+(?=":)' | head -1 | tr -d '"')
+
+    if [ -n "$MONITOR_ID" ] && [ "$MONITOR_ID" != "@a{si}" ]; then
+        info "Monitor: $MONITOR_ID"
+        gs $ZTASK panel-anchors  "{\"$MONITOR_ID\":\"MIDDLE\"}"
+        gs $ZTASK panel-lengths  "{\"$MONITOR_ID\":-1}"
+        gs $ZTASK panel-element-positions \
+            "{\"$MONITOR_ID\":[{\"element\":\"showAppsButton\",\"visible\":false,\"position\":\"stackedTL\"},{\"element\":\"taskbar\",\"visible\":true,\"position\":\"stackedTL\"},{\"element\":\"leftBox\",\"visible\":false,\"position\":\"stackedTL\"},{\"element\":\"centerBox\",\"visible\":false,\"position\":\"stackedBR\"},{\"element\":\"rightBox\",\"visible\":false,\"position\":\"stackedBR\"},{\"element\":\"activitiesButton\",\"visible\":false,\"position\":\"stackedBR\"},{\"element\":\"systemMenu\",\"visible\":false,\"position\":\"stackedBR\"},{\"element\":\"dateMenu\",\"visible\":false,\"position\":\"stackedBR\"},{\"element\":\"desktopButton\",\"visible\":false,\"position\":\"stackedBR\"}]}"
+    else
+        warn "Could not detect monitor ID — panel layout not set (configure manually in Zorin Taskbar settings)."
+    fi
+
+    info "Adding icon padding override to gnome-shell.css..."
+    SHELL_CSS="/usr/share/themes/WhiteSur-Light/gnome-shell/gnome-shell.css"
+    if [ -f "$SHELL_CSS" ] && ! grep -q "natural-hpadding: 0px" "$SHELL_CSS"; then
+        cat >> "$SHELL_CSS" << 'EOF'
 
 /* Reduced icon spacing for zorin-taskbar dock */
 #zorintaskbarTaskbar .panel-button {
@@ -118,34 +197,42 @@ if [ -f "$SHELL_CSS" ] && ! grep -q "natural-hpadding: 0px" "$SHELL_CSS"; then
   -minimum-hpadding: 0px !important;
 }
 EOF
-    info "Icon padding override added."
+    fi
+else
+    warn "zorin-taskbar not found — dock not configured."
 fi
 
-section "7. Wallpaper"
+# ── 7. Keyboard shortcuts ────────────────────────────────────────────────────
+section "7. Keyboard shortcuts"
+info "Free Super+Space from switch-input-source..."
+gs org.gnome.desktop.wm.keybindings switch-input-source "['XF86Keyboard']"
+
+# ── 8. Wallpaper ──────────────────────────────────────────────────────────────
+section "8. Wallpaper"
 WALLPAPER_DIR="$REAL_HOME/Pictures/Wallpapers"
 mkdir -p "$WALLPAPER_DIR"
-if ls "$REPO_DIR/wallpapers/"*.jpg &>/dev/null; then
-    cp "$REPO_DIR/wallpapers/"*.jpg "$WALLPAPER_DIR/"
-    chown "$REAL_USER:$REAL_USER" "$WALLPAPER_DIR/"*.jpg
-    WALLPAPER="file://$WALLPAPER_DIR/macos-bigsur-classic.jpg"
-    gsetting org.gnome.desktop.background picture-uri "$WALLPAPER"
-    gsetting org.gnome.desktop.background picture-uri-dark "$WALLPAPER"
-    gsetting org.gnome.desktop.background picture-options 'zoom'
-    info "Wallpaper set: macos-bigsur-classic.jpg"
-fi
+cp "$REPO_DIR/wallpapers/"*.jpg "$WALLPAPER_DIR/" 2>/dev/null || true
+chown "$REAL_USER:$REAL_USER" "$WALLPAPER_DIR/"*.jpg 2>/dev/null || true
 
-section "8. GTK_THEME environment variable"
+WALLPAPER="file://$WALLPAPER_DIR/macos-bigsur-classic.jpg"
+gs org.gnome.desktop.background picture-uri       "$WALLPAPER"
+gs org.gnome.desktop.background picture-uri-dark  "$WALLPAPER"
+gs org.gnome.desktop.background picture-options   'zoom'
+info "Wallpaper: macos-bigsur-classic.jpg"
+
+# ── 9. GTK_THEME env ──────────────────────────────────────────────────────────
 PROFILE="$REAL_HOME/.profile"
 if ! grep -q "GTK_THEME=WhiteSur-Light" "$PROFILE" 2>/dev/null; then
     echo 'export GTK_THEME=WhiteSur-Light' >> "$PROFILE"
-    info "Added GTK_THEME to ~/.profile"
+    info "GTK_THEME=WhiteSur-Light added to ~/.profile"
 fi
 
-section "9. GDM login screen theme"
+# ── 10. GDM login screen ──────────────────────────────────────────────────────
+section "9. GDM login screen"
 GDM_DEFAULTS="/etc/gdm3/greeter.dconf-defaults"
-if [ -f "$GDM_DEFAULTS" ] || [ -d "$(dirname "$GDM_DEFAULTS")" ]; then
+if [ -d "$(dirname "$GDM_DEFAULTS")" ]; then
     cat > "$GDM_DEFAULTS" << EOF
-# GDM Greeter - macOS Theme
+# GDM Greeter - macOS Theme (zorin-macos-theme)
 
 [org/gnome/desktop/interface]
 gtk-theme='WhiteSur-Light'
@@ -162,21 +249,24 @@ picture-options='zoom'
 [org/gnome/login-screen]
 logo=''
 EOF
-    info "GDM login screen theme applied."
+    info "GDM login screen themed."
 else
-    warn "GDM config directory not found — skipping login screen theme."
+    warn "GDM config dir not found — login screen skipped."
 fi
 
+# ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}  ✔  macOS theme applied to Zorin OS!${NC}"
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}  ✔  macOS theme applied to Zorin OS ${ZORIN_VERSION:-?}!${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  Theme    : WhiteSur-Light"
+echo "  Theme    : WhiteSur-Light (GTK3 + GTK4/libadwaita)"
 echo "  Icons    : WhiteSur-light"
 echo "  Cursors  : WhiteSur-cursors"
-echo "  Dock     : Bottom, 64px, macOS layout"
+echo "  Buttons  : ● ─ □  (left side, macOS style)"
+echo "  Dock     : Bottom, 64px, centered, intellihide"
 echo "  Wallpaper: macOS Big Sur Classic"
+echo "  GDM      : WhiteSur login screen"
 echo ""
 echo -e "${YELLOW}  → Log out and back in for all changes to take effect.${NC}"
 echo ""
