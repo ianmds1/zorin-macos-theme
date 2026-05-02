@@ -123,7 +123,7 @@ gs org.gnome.desktop.interface cursor-theme         'WhiteSur-cursors'
 gs org.gnome.desktop.interface font-name            'Cantarell 11'
 gs org.gnome.desktop.interface document-font-name   'Cantarell 11'
 gs org.gnome.desktop.interface monospace-font-name  'Source Code Pro 10'
-gs org.gnome.desktop.interface color-scheme         'prefer-dark'
+gs org.gnome.desktop.interface color-scheme         'default'
 gs org.gnome.desktop.interface font-antialiasing    'grayscale'
 gs org.gnome.desktop.interface font-hinting         'slight'
 
