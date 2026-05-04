@@ -23,6 +23,7 @@ Transform your **Zorin OS 17/18** desktop into a macOS look-alike — one script
 | 15 | GDM login screen | WhiteSur theme + Big Sur wallpaper |
 | 16 | Dark/light toggle | Syncs GNOME/Zorin color-scheme with WhiteSur-Light / WhiteSur-Dark |
 | 17 | `Super+Space` | Freed from switch-input-source |
+| 18 | Wi-Fi / Quick Settings fix | Keeps top-panel Wi-Fi working with taskbar-only dock + intellihide |
 
 ## Install
 
@@ -60,6 +61,7 @@ Resets everything back to Zorin OS 18 defaults.
 zorin-macos-theme/
 ├── scripts/
 │   ├── apply-theme.sh             # Full installer
+│   ├── patch-zorin-taskbar-quicksettings.sh
 │   ├── zorin-macos-theme-sync     # Keeps tray dark/light toggle in sync
 │   └── revert.sh                  # Revert to Zorin defaults
 ├── gtk4/
@@ -79,6 +81,7 @@ zorin-macos-theme/
 - **GDM login screen**: Themed via `/etc/gdm3/greeter.dconf-defaults`.
 - **Dock layout**: The `panel-element-positions` setting hides the system tray, clock, and activities button — leaving only the app taskbar, centered, like a real macOS dock. Detected per monitor ID automatically.
 - **Intellihide**: Dock hides when a focused window overlaps it, reveals on hover or pointer pressure.
+- **Wi-Fi / Quick Settings compatibility**: `apply-theme.sh` patches Zorin Taskbar so top-panel Quick Settings keeps working after lock/unlock even with `intellihide=true` and a taskbar-only dock. Original `panel.js` and `panelManager.js` are backed up to `/usr/local/share/zorin-macos-theme-backups/` and restored by `revert.sh`.
 - **Icons**: WhiteSur-light is used as the primary icon theme across apps, tray, and GDM.
 
 ## Companion project

@@ -30,7 +30,7 @@ fi
 
 # ── 0. Dependencies ───────────────────────────────────────────────────────────
 section "0. Dependencies"
-apt-get install -y -qq git curl unzip libglib2.0-bin 2>/dev/null || true
+apt-get install -y -qq git curl unzip libglib2.0-bin python3 2>/dev/null || true
 
 # ── 1. WhiteSur GTK Theme ─────────────────────────────────────────────────────
 section "1. WhiteSur GTK Theme"
@@ -247,6 +247,9 @@ if gcheck "org.gnome.shell.extensions.zorin-taskbar"; then
 }
 EOF
     fi
+
+    info "Patching zorin-taskbar Quick Settings / Wi-Fi compatibility..."
+    "$REPO_DIR/scripts/patch-zorin-taskbar-quicksettings.sh"
 else
     warn "zorin-taskbar not found — dock not configured."
 fi

@@ -13,6 +13,7 @@ REAL_USER=${SUDO_USER:-$(logname 2>/dev/null || id -un)}
 REAL_UID=$(id -u "$REAL_USER")
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
 DBUS="unix:path=/run/user/${REAL_UID}/bus"
+BACKUP_DIR="/usr/local/share/zorin-macos-theme-backups"
 
 gs() { sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" gsettings set "$@" 2>/dev/null || warn "gsettings: $*"; }
 greset() { sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" gsettings reset "$@" 2>/dev/null || true; }
@@ -75,6 +76,13 @@ info "Wallpaper reset to Zorin default."
 # Revert GDM
 rm -f /etc/gdm3/greeter.dconf-defaults
 info "GDM reverted to default."
+
+# Restore zorin-taskbar JS if backups exist
+if [ -f "$BACKUP_DIR/panel.js.orig" ] && [ -f "$BACKUP_DIR/panelManager.js.orig" ]; then
+    cp -f "$BACKUP_DIR/panel.js.orig" /usr/share/gnome-shell/extensions/zorin-taskbar@zorinos.com/panel.js
+    cp -f "$BACKUP_DIR/panelManager.js.orig" /usr/share/gnome-shell/extensions/zorin-taskbar@zorinos.com/panelManager.js
+    info "Zorin taskbar Quick Settings patch reverted."
+fi
 
 echo ""
 echo -e "${GREEN}✔ Reverted to Zorin OS 18 defaults.${NC}"
