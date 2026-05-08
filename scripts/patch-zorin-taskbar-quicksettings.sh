@@ -215,13 +215,34 @@ for label, old, new in panel_replacements:
 panel_manager_replacements = [
     (
         "skip-top-panel-menu-adjust",
-        """  _adjustPanelMenuButton(button, monitor, arrowSide) {
+        """  _updatePanelElementPositions() {
+    this.allPanels.forEach((p) => p.updateElementPositions())
+  }
+
+  _adjustPanelMenuButton(button, monitor, arrowSide) {
     if (button && button.menu) {
 """,
-        """  _adjustPanelMenuButton(button, monitor, arrowSide) {
+        """  _updatePanelElementPositions() {
+    this.allPanels.forEach((p) => p.updateElementPositions())
+  }
+
+  _isActorInTopPanel(actor) {
+    while (actor) {
+      if (actor === Main.panel) {
+        return true
+      }
+
+      actor = actor.get_parent?.()
+    }
+
+    return false
+  }
+
+  _adjustPanelMenuButton(button, monitor, arrowSide) {
     if (
       button === Main.panel.statusArea.quickSettings ||
-      button === Main.panel.statusArea.dateMenu
+      button === Main.panel.statusArea.dateMenu ||
+      this._isActorInTopPanel(button)
     ) {
       return
     }
@@ -245,7 +266,8 @@ panel_manager_replacements = [
     let sourceActor = boxPointer.sourceActor
     let isTopPanelMenu =
       sourceActor === Main.panel.statusArea.quickSettings ||
-      sourceActor === Main.panel.statusArea.dateMenu
+      sourceActor === Main.panel.statusArea.dateMenu ||
+      this._isActorInTopPanel(sourceActor)
 
     if (
       boxPointer._dtpInPanel &&
@@ -268,4 +290,4 @@ panel_js.write_text(panel_text)
 panel_manager_js.write_text(panel_manager_text)
 PY
 
-echo "Patched zorin-taskbar Quick Settings / Wi-Fi compatibility."
+echo "Patched zorin-taskbar top-panel menu compatibility."
