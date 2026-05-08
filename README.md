@@ -14,16 +14,17 @@ Transform your **Zorin OS 17/18** desktop into a macOS look-alike — one script
 | 6 | Shell (top bar) theme | WhiteSur-Light |
 | 7 | Window buttons | `● ─ □` left side (macOS style) |
 | 8 | Titlebar font | Cantarell Bold 11 |
-| 9 | Dock position | Bottom, 64px, centered |
-| 10 | Dock auto-hide | Intellihide (hides when windows overlap) |
-| 11 | Dock layout | Taskbar only — no clock, no system tray |
-| 12 | Icon spacing | 0px padding (compact dock) |
-| 13 | Click behavior | Cycle/minimize on click |
-| 14 | Wallpaper | macOS Big Sur Classic |
-| 15 | GDM login screen | WhiteSur theme + Big Sur wallpaper |
-| 16 | Dark/light toggle | Syncs GNOME/Zorin color-scheme with WhiteSur-Light / WhiteSur-Dark |
-| 17 | `Super+Space` | Freed from switch-input-source |
-| 18 | Wi-Fi / Quick Settings fix | Keeps top-panel Wi-Fi working with taskbar-only dock + intellihide |
+| 9 | Terminal font | JetBrains Mono 11 |
+| 10 | Dock position | Bottom, 64px, centered |
+| 11 | Dock auto-hide | Intellihide (hides when windows overlap) |
+| 12 | Dock layout | Taskbar only — no clock, no system tray |
+| 13 | Icon spacing | 0px padding (compact dock) |
+| 14 | Click behavior | Cycle/minimize on click |
+| 15 | Wallpaper | macOS Big Sur Classic |
+| 16 | GDM login screen | WhiteSur theme + Big Sur wallpaper |
+| 17 | Dark/light toggle | Syncs GNOME/Zorin color-scheme with WhiteSur-Light / WhiteSur-Dark |
+| 18 | `Super+Space` | Freed from switch-input-source |
+| 19 | Wi-Fi / Quick Settings fix | Keeps top-panel Wi-Fi working with taskbar-only dock + intellihide |
 
 ## Install
 
@@ -77,6 +78,7 @@ zorin-macos-theme/
 ## Technical notes
 
 - **GTK4 / libadwaita**: Apps like Files, Settings, Software Center ignore `gsettings gtk-theme`. The script extracts the real WhiteSur CSS from `gtk.gresource` and installs it to `~/.config/gtk-4.0/gtk.css`, `gtk-dark.css`, and `windows-assets/` for macOS-style title buttons.
+- **GNOME Terminal**: The script applies `JetBrains Mono 11` to the default GNOME Terminal profile and forces the classic gray-on-black look used in the live setup.
 - **Dark/light tray toggle**: Zorin's tray toggle changes `color-scheme`, but custom GTK themes do not switch automatically. `zorin-macos-theme-sync` maps `default → WhiteSur-Light` and `prefer-dark → WhiteSur-Dark`.
 - **GDM login screen**: Themed via `/etc/gdm3/greeter.dconf-defaults`.
 - **Dock layout**: The `panel-element-positions` setting hides the system tray, clock, and activities button — leaving only the app taskbar, centered, like a real macOS dock. Detected per monitor ID automatically.

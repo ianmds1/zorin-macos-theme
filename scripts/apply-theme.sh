@@ -30,7 +30,7 @@ fi
 
 # ── 0. Dependencies ───────────────────────────────────────────────────────────
 section "0. Dependencies"
-apt-get install -y -qq git curl unzip libglib2.0-bin python3 2>/dev/null || true
+apt-get install -y -qq git curl unzip libglib2.0-bin python3 fonts-jetbrains-mono 2>/dev/null || true
 
 # ── 1. WhiteSur GTK Theme ─────────────────────────────────────────────────────
 section "1. WhiteSur GTK Theme"
@@ -156,6 +156,26 @@ if gcheck "com.zorin.desktop.auto-theme"; then
     info "Zorin dark/light tray toggle: WhiteSur Light/Dark mapping..."
     gs com.zorin.desktop.auto-theme day-theme   'WhiteSur-Light'  2>/dev/null || true
     gs com.zorin.desktop.auto-theme night-theme 'WhiteSur-Dark'   2>/dev/null || true
+fi
+
+# ── 5c. GNOME Terminal ────────────────────────────────────────────────────────
+section "5c. GNOME Terminal"
+if gcheck "org.gnome.Terminal.ProfilesList"; then
+    TERM_PROFILE=$(sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" \
+        gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'")
+    if [ -n "$TERM_PROFILE" ]; then
+        TERM_SCHEMA="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$TERM_PROFILE/"
+        info "Terminal font and colors..."
+        gs "$TERM_SCHEMA" use-system-font false
+        gs "$TERM_SCHEMA" font 'JetBrains Mono 11'
+        gs "$TERM_SCHEMA" use-theme-colors false
+        gs "$TERM_SCHEMA" foreground-color 'rgb(170,170,170)'
+        gs "$TERM_SCHEMA" background-color 'rgb(0,0,0)'
+    else
+        warn "Could not detect GNOME Terminal default profile."
+    fi
+else
+    warn "GNOME Terminal schema not found — terminal styling skipped."
 fi
 
 # The GNOME/Zorin dark style toggle changes color-scheme, but custom GTK themes
@@ -315,6 +335,7 @@ echo ""
 echo "  Theme    : WhiteSur-Light + dark mode via color-scheme (toggle works)"
 echo "  Icons    : WhiteSur-light"
 echo "  Cursors  : WhiteSur-cursors"
+echo "  Terminal : JetBrains Mono 11"
 echo "  Buttons  : ● ─ □  (left side, macOS style)"
 echo "  Dock     : Bottom, 64px, centered, intellihide"
 echo "  Wallpaper: macOS Big Sur Classic"

@@ -59,6 +59,21 @@ fi
 # Restore Super+Space for input source
 gs org.gnome.desktop.wm.keybindings switch-input-source "['<Super>space']"
 
+# Restore GNOME Terminal defaults
+if sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" \
+   gsettings list-schemas 2>/dev/null | grep -q "org.gnome.Terminal.ProfilesList"; then
+    TERM_PROFILE=$(sudo -u "$REAL_USER" DBUS_SESSION_BUS_ADDRESS="$DBUS" \
+        gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'")
+    if [ -n "$TERM_PROFILE" ]; then
+        TERM_SCHEMA="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$TERM_PROFILE/"
+        greset "$TERM_SCHEMA" use-system-font
+        greset "$TERM_SCHEMA" font
+        greset "$TERM_SCHEMA" use-theme-colors
+        greset "$TERM_SCHEMA" foreground-color
+        greset "$TERM_SCHEMA" background-color
+    fi
+fi
+
 # Remove GTK4 overrides
 rm -f "$REAL_HOME/.config/gtk-4.0/gtk.css"
 rm -f "$REAL_HOME/.config/gtk-4.0/gtk-dark.css"
